@@ -31,7 +31,7 @@ class Grid:
             "\n".join([
                 "│".join([
                     "".join([
-                        symbols[state_id] if state_id in symbols else "▯"
+                        symbols[state_id] if state_id > -1 else "▯"
                         for state_id in mini_col])
                     for mini_col in col])
                 for col in mini_row])
@@ -50,13 +50,37 @@ class Grid:
             col = index % grid_row_amt
             if symbol in states:
                 state_id = states[symbol]
-                self.write_cell(row, col, state_id)
+                self.set(row, col, state_id)
     
-    def write_cell(self, row, col, state_id):
+    def set(self, row, col, state_id):
+        self.grid_states_amt[row, :] -= self.grid_states[row, :, state_id]
+        self.grid_states[row, :, state_id] = 0
+        self.grid_states_amt[:, col] -= self.grid_states[:, col, state_id]
+        self.grid_states[:, col, state_id] = 0
+
+        self.grid_states_amt[row, col] = 0
         self.grid_states[row, col] = 0
-        self.grid_states[row, col, state_id] = 1
-        self.grid_states_amt[row, col] = 1
         self.grid_state[row, col] = state_id
+
+    def collapse(self):
+        collapsable_grid = self.grid_states_amt == 1
+        collapsable = collapsable_grid.sum() > 0
+        if not collapsable:
+            return 0
+
+        collapsable_grid_states = self.grid_states * collapsable_grid.reshape(9, 9, 1)
+        rows, cols, state_ids = np.where(collapsable_grid_states)
+        self.set(rows, cols, state_ids)
+        return  1
+
 
 if __name__ == "__main__":
     grid = Grid("../1.puz")
+    print(f"Puzzle:\n{grid}\n")
+    collapsable = 1
+    collapses = 0
+    while collapsable:
+        collapsable = grid.collapse()
+        collapses += 1
+        print(f"Collapse {collapses}:\n{grid}\n")
+    print("No longer collapsable, multiple possible states for all remaining cells.")
