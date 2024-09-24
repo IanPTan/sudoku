@@ -1,4 +1,5 @@
 import numpy as np
+from time import time
 
 
 grid_row_amt = 9
@@ -12,14 +13,15 @@ grid_states_shape = (grid_row_amt, grid_col_amt, states_amt)
 
 
 class Grid:
-    def __init__(self, file_path=None):
-        self.grid_states = np.full(grid_states_shape, 1, dtype=np.bool)
-        self.grid_states_amt = np.full(grid_shape, 9, dtype=np.int8)
-        self.grid_state = np.full(grid_shape, -1, dtype=np.int8)
+    def __init__(self, file_path=None, grid_states=np.full(grid_states_shape, 1, dtype=np.bool), grid_states_amt=np.full(grid_shape, 9, dtype=np.int8), grid_state = np.full(grid_shape, -1, dtype=np.int8), children=[]):
+        self.grid_states = grid_states
+        self.grid_states_amt = grid_states_amt
+        self.grid_state = grid_state
+        self.children = children
 
         if type(file_path) == str:
             self.read_file(file_path)
-        elif file_path is not None:
+        elif file_path != None:
             raise Exception("File path must be a string.")
 
     def __repr__(self):
@@ -42,7 +44,7 @@ class Grid:
             raw_data = file.read()
         concise_raw_data = raw_data.replace("\n", "")
 
-        if len(concise_raw_data) is not grid_cell_amt:
+        if len(concise_raw_data) != grid_cell_amt:
             raise Exception("File does not contain a valid grid state.")
 
         for index, symbol in enumerate(concise_raw_data):
@@ -53,34 +55,62 @@ class Grid:
                 self.set(row, col, state_id)
     
     def set(self, row, col, state_id):
+        print(f"the thing\n{self.grid_states_amt[row, :]}\n{self.grid_states[row, :, state_id]}")
+        # synchronous subtraction has screwed me it only applies changes once when it should be done multiple times
         self.grid_states_amt[row, :] -= self.grid_states[row, :, state_id]
-        self.grid_states[row, :, state_id] = 0
         self.grid_states_amt[:, col] -= self.grid_states[:, col, state_id]
+        self.grid_states[row, :, state_id] = 0
         self.grid_states[:, col, state_id] = 0
-
         self.grid_states_amt[row, col] = 0
         self.grid_states[row, col] = 0
         self.grid_state[row, col] = state_id
+        if (self.grid_states_amt != self.grid_states.sum(axis=-1)).any():
+            print(f"BRUH\n{self.grid_states_amt != self.grid_states.sum(axis=-1)}")
+            exit()
 
     def collapse(self):
         collapsable_grid = self.grid_states_amt == 1
+        print(self)
+        print(self.grid_states_amt)
+        print(self.grid_states[3, 5])
         collapsable = collapsable_grid.sum() > 0
+        solved = (self.grid_states_amt == 0).all()
+        if solved:
+            return 1
         if not collapsable:
-            return 0
+            return 2
 
         collapsable_grid_states = self.grid_states * collapsable_grid.reshape(9, 9, 1)
         rows, cols, state_ids = np.where(collapsable_grid_states)
         self.set(rows, cols, state_ids)
-        return  1
+        return  0
 
+    def solve(self, branch=1):
+        status = 0
+        while status == 0:
+            input()
+            status = self.collapse()
+            # print(f"\n{self}\n")
+        if status == 1:
+            print(f"\n\n\nSolved:\n{self}\n\n\n")
+        if status == 2 and branch:
+            print("\n\n\nbranching\n\n\n")
+            max_state_amt = self.grid_states_amt.max()
+            rows, cols = np.where(self.grid_states_amt == max_state_amt)
+            row, col = rows[0], cols[0]
+            self.branch(row, col)
+
+    def branch(self, row, col):
+        possibilities, = np.where(self.grid_states[row, col] == 1)
+        self.children = [Grid(grid_states=self.grid_states.copy(), grid_states_amt=self.grid_states_amt.copy(), grid_state=self.grid_state.copy()) for _ in possibilities]
+        for grid, possibility in zip(self.children, possibilities):
+            grid.set(row, col, possibility)
+            grid.solve()
 
 if __name__ == "__main__":
     grid = Grid("../1.puz")
     print(f"Puzzle:\n{grid}\n")
-    collapsable = 1
-    collapses = 0
-    while collapsable:
-        collapsable = grid.collapse()
-        collapses += 1
-        print(f"Collapse {collapses}:\n{grid}\n")
-    print("No longer collapsable, multiple possible states for all remaining cells.")
+    start = time()
+    grid.solve()
+    duration = time() - start
+    print(f"It took {duration} seconds to solve.")
