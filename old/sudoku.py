@@ -1,4 +1,5 @@
 import numpy as np
+from time import time
 
 def chop(puzzle, x, y, s = 3):
     return puzzle[y * s: (y + 1) * s, x * s: (x + 1) * s]
@@ -53,11 +54,15 @@ def solve(pzl, sol):
     dissol(sol)
     while np.prod(sol) == 0:
         elim1(pzl, sol)
-    print('\nsolution:\n')
-    dissol(sol)
 
 sol = np.zeros([9, 9], dtype = int)
 
 pzl = readPuzzle(input('Puzzle dir: '))
 
-# solve(pzl, sol)
+start = time()
+solve(pzl, sol)
+duration = time() - start
+
+
+print(f'\nsolution in {duration} seconds:\n')
+dissol(sol)
