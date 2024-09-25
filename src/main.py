@@ -1,5 +1,5 @@
 import numpy as np
-from time import time
+from time import time, sleep
 
 
 states = {"1": 0, "2": 1, "3": 2, "4": 3, "5": 4, "6": 5, "7": 6, "8": 7, "9": 8}
@@ -13,11 +13,18 @@ def check(grid_state):
                 return 1
     return 0
 
+def ani_solve(grid, delay=0.25):
+    status = 0
+    print(grid)
+    while status == 0:
+        sleep(delay)
+        status = grid.collapse()
+        print(f"\033[11A{grid}")
+
 class Grid:
-    def __init__(self, file_path=None, grid_states=np.full((3, 3, 3, 3, 9), 1, dtype=np.bool), grid_state = np.full((3, 3, 3, 3), -1, dtype=np.int8), children=[]):
-        self.grid_states = grid_states
-        self.grid_state = grid_state
-        self.children = children
+    def __init__(self, file_path=None):
+        self.grid_states=np.full((3, 3, 3, 3, 9), 1, dtype=np.bool)
+        self.grid_state = np.full((3, 3, 3, 3), -1, dtype=np.int8)
 
         if type(file_path) == str:
             self.read_file(file_path)
@@ -88,14 +95,6 @@ class Grid:
             max_state_amt = grid_states_amt.max()
             rows, cols = np.where(grid_states_amt == max_state_amt)
             row, col = rows[0], cols[0]
-            self.branch(row, col)
-
-    def branch(self, row, col):
-        possibilities, = np.where(self.grid_states[row, col] == 1)
-        self.children = [Grid(grid_states=self.grid_states.copy(), grid_state=self.grid_state.copy()) for _ in possibilities]
-        for grid, possibility in zip(self.children, possibilities):
-            grid.set(row, col, possibility)
-            grid.solve()
 
 if __name__ == "__main__":
     grid = Grid("../puzzles/1.puz")
